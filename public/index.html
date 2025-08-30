@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메이플 보스 플래너</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <h1>메이플 보스 플래너</h1>
+            
+            <!-- 캐릭터 관리 -->
+            <div class="section">
+                <h2>캐릭터 관리</h2>
+                <div class="character-management">
+                    <input 
+                        type="text" 
+                        v-model="newCharacterName" 
+                        @keypress.enter="addCharacter"
+                        placeholder="캐릭터 이름"
+                    >
+                    <button @click="addCharacter">캐릭터 추가</button>
+                </div>
+                <div id="character-list">
+                    <div 
+                        v-for="character in characters" 
+                        :key="character.id"
+                        class="character-item"
+                        :class="{ active: selectedCharacter && selectedCharacter.id === character.id }"
+                        @click="selectCharacter(character)"
+                    >
+                        <div class="character-info">
+                            <span class="character-name">{{ character.name }}</span>
+                            <span class="character-boss-count">
+                                ({{ (characterBosses[character.id] && characterBosses[character.id].selectedBosses || []).length }}개 보스)
+                            </span>
+                        </div>
+                        <button class="danger" @click.stop="removeCharacter(character.id)">삭제</button>
+                    </div>
+                </div>
+                
+                <div v-if="selectedCharacter" class="current-character">
+                    <h3>현재 선택된 캐릭터: {{ selectedCharacter.name }}</h3>
+                </div>
+                
+                <div v-if="selectedCharacter" class="quick-setup">
+                    <h4>간편 세팅</h4>
+                    <p class="quick-setup-description">자주 사용하는 보스 조합을 한 번에 선택할 수 있습니다 (12개 주간 보스)</p>
+                    <div class="quick-setup-buttons">
+                        <button 
+                            v-for="(bossList, setupName) in quickSetups" 
+                            :key="setupName"
+                            @click="applyQuickSetup(setupName)"
+                            class="quick-setup-btn"
+                        >
+                            {{ setupName }}
+                        </button>
+                    </div>
+                </div>
+                
+                <div v-if="characters.length > 0" class="settings-management">
+                    <div class="settings-section">
+                        <h4>파일 백업</h4>
+                        <div class="settings-buttons">
+                            <button @click="exportToJson" class="export-btn">설정 내보내기 (JSON)</button>
+                            <button @click="triggerFileImport" class="import-btn">설정 가져오기 (JSON)</button>
+                        </div>
+                        <span class="settings-info">설정을 JSON 파일로 백업하고 복원할 수 있습니다</span>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h4>데이터 관리</h4>
+                        <div class="settings-buttons">
+                            <button class="danger" @click="confirmClearCache">모든 데이터 초기화</button>
+                        </div>
+                        <span class="settings-info">데이터는 자동으로 저장됩니다</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 보스 선택 -->
+            <div class="section">
+                <h2>보스 선택</h2>
+                <div class="boss-selection">
+                    <div class="boss-category">
+                        <h3>주간 보스 ({{ selectedWeeklyBosses.length }}/12)</h3>
+                        <div class="boss-rows">
+                            <div 
+                                v-for="bossGroup in weeklyBossGroups" 
+                                :key="bossGroup.name"
+                                class="boss-row"
+                            >
+                                <div class="boss-row-name">{{ bossGroup.name }}</div>
+                                <div class="boss-row-items">
+                                    <div 
+                                        v-for="boss in bossGroup.difficulties" 
+                                        :key="boss.name + boss.difficulty"
+                                        class="boss-item"
+                                        :class="{ selected: isBossSelected(boss) }"
+                                    >
+                                        <div class="boss-content" @click="toggleBossSelection(boss)">
+                                            <div class="boss-difficulty">{{ boss.difficulty }}</div>
+                                            <div class="boss-price">{{ formatMeso(boss.price) }}</div>
+                                        </div>
+                                        <div v-if="isBossSelected(boss)" class="party-selector">
+                                            <select 
+                                                :value="getBossPartySize(boss)" 
+                                                @change="updateBossPartySize(boss, $event.target.value)"
+                                                @click.stop
+                                            >
+                                                <option value="1">1명</option>
+                                                <option value="2">2명</option>
+                                                <option value="3">3명</option>
+                                                <option value="4">4명</option>
+                                                <option value="5">5명</option>
+                                                <option value="6">6명</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="boss-category">
+                        <h3>월간 보스 ({{ selectedMonthlyBosses.length }}/1)</h3>
+                        <div class="boss-rows">
+                            <div 
+                                v-for="bossGroup in monthlyBossGroups" 
+                                :key="bossGroup.name"
+                                class="boss-row"
+                            >
+                                <div class="boss-row-name">{{ bossGroup.name }}</div>
+                                <div class="boss-row-items">
+                                    <div 
+                                        v-for="boss in bossGroup.difficulties" 
+                                        :key="boss.name + boss.difficulty"
+                                        class="boss-item"
+                                        :class="{ selected: isBossSelected(boss) }"
+                                    >
+                                        <div class="boss-content" @click="toggleBossSelection(boss)">
+                                            <div class="boss-difficulty">{{ boss.difficulty }}</div>
+                                            <div class="boss-price">{{ formatMeso(boss.price) }}</div>
+                                        </div>
+                                        <div v-if="isBossSelected(boss)" class="party-selector">
+                                            <select 
+                                                :value="getBossPartySize(boss)" 
+                                                @change="updateBossPartySize(boss, $event.target.value)"
+                                                @click.stop
+                                            >
+                                                <option value="1">1명</option>
+                                                <option value="2">2명</option>
+                                                <option value="3">3명</option>
+                                                <option value="4">4명</option>
+                                                <option value="5">5명</option>
+                                                <option value="6">6명</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- 수익 계산 -->
+            <div class="section">
+                <h2>수익 계산</h2>
+                
+                <!-- 개별 캐릭터 수익 -->
+                <div v-if="characters.length > 0" class="individual-rewards">
+                    <h3>개별 캐릭터 수익</h3>
+                    <div class="character-rewards">
+                        <div 
+                            v-for="reward in allCharacterRewards" 
+                            :key="reward.character.id"
+                            class="character-reward-item"
+                        >
+                            <div class="character-reward-name">{{ reward.character.name }}</div>
+                            <div class="character-reward-details">
+                                <div class="reward-row">
+                                    <span>주간:</span>
+                                    <span>{{ formatMeso(reward.weeklyReward) }}</span>
+                                </div>
+                                <div class="reward-row">
+                                    <span>월간:</span>
+                                    <span>{{ formatMeso(reward.monthlyReward) }}</span>
+                                </div>
+                                <div class="boss-count">{{ reward.selectedBossCount }}개 보스</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 전체 합계 -->
+                <div id="reward-display">
+                    <div class="reward-section">
+                        <h3>전체 주간 수익</h3>
+                        <div id="weekly-reward">{{ formatMeso(totalWeeklyReward) }}</div>
+                    </div>
+                    <div class="reward-section">
+                        <h3>전체 월간 수익</h3>
+                        <div id="monthly-reward">{{ formatMeso(totalMonthlyReward) }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 선택된 보스 -->
+            <div class="section" v-if="selectedCharacter">
+                <h2>{{ selectedCharacter.name }}의 선택된 보스</h2>
+                <div id="selected-bosses">
+                    <div 
+                        v-for="boss in currentCharacterData.selectedBosses" 
+                        :key="boss.name + boss.difficulty"
+                        class="selected-boss-item"
+                    >
+                        <div>{{ boss.name }} ({{ boss.difficulty }})</div>
+                        <div>{{ formatMeso(Math.floor(boss.price / getBossPartySize(boss))) }} ({{ getBossPartySize(boss) }}명)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>메이플 보스 플래너</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>메이플 보스 플래너</h1>
+        
+        <div class="section">
+            <h2>캐릭터 관리</h2>
+            <div class="character-management">
+                <input type="text" id="character-name" placeholder="캐릭터 이름">
+                <button onclick="addCharacter()">캐릭터 추가</button>
+                <div id="character-list"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>보스 선택</h2>
+            <div class="boss-selection">
+                <div class="boss-categories">
+                    <div class="boss-category">
+                        <h3>주간 보스</h3>
+                        <div id="weekly-bosses" class="boss-grid"></div>
+                    </div>
+                    <div class="boss-category">
+                        <h3>월간 보스</h3>
+                        <div id="monthly-bosses" class="boss-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>파티 설정</h2>
+            <div class="party-settings">
+                <label for="party-size">파티 인원수:</label>
+                <select id="party-size">
+                    <option value="1">1명 (솔로)</option>
+                    <option value="2">2명</option>
+                    <option value="3">3명</option>
+                    <option value="4">4명</option>
+                    <option value="5">5명</option>
+                    <option value="6">6명</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>수익 계산</h2>
+            <button onclick="calculateRewards()">수익 계산하기</button>
+            <div id="reward-display">
+                <div class="reward-section">
+                    <h3>주간 수익</h3>
+                    <div id="weekly-reward">0 메소</div>
+                </div>
+                <div class="reward-section">
+                    <h3>월간 수익</h3>
+                    <div id="monthly-reward">0 메소</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>선택된 보스</h2>
+            <div id="selected-bosses"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
